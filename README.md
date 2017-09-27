@@ -1,4 +1,5 @@
 # Study-Silex
+## 概要
 Silex勉強用に作成したレポジトリ。
 Hello Worldからログイン機能、セッション管理まで。
 
@@ -19,7 +20,18 @@ Hello Worldからログイン機能、セッション管理まで。
 $ composer install
 ```
 
+### ディレクトリ構成
+```
+Study-Silex
+├── README.md
+├── composer.json
+├── composer.lock
+├── index.php
+└── vendor
+```
+
 ### Hello World
+#### とりあえず表示
 `index.php` を作成する。
 
 ```php
@@ -36,6 +48,32 @@ $app->get('/', function() use ($app) {
 // Silexアプリケーションの実行
 $app->run();
 ?>
+```
+
+#### Twigを使ってViewを作ってみる
+view用のファイルをtwigを使って作成する。
+
+```
+{# layout.twig #}
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <!-- head情報を記述 -->
+  </head>
+  <body>
+    {% block body %}{% endblock %}
+  </body>
+</html>
+```
+
+```
+{# index.twig #}
+{% extends 'layout.twig' %}
+
+{% block body %}
+  <h1>こんにちは、{{ name }}さん！</h1>
+  <p>indexファイルが表示されています。</p>
+{% endblock %}
 ```
 
 ## 環境
