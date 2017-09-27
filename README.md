@@ -76,6 +76,32 @@ view用のファイルをtwigを使って作成する。
 {% endblock %}
 ```
 
+twigを使うように`index.php`を書き換える。
+`$app['twig']`にService Providerが登録されていて、
+`render`メソッドで対象テンプレート(`index.twig`)を指定して
+テンプレートをレンダリングする。	
+```php
+<?php
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+$app = new Silex\Application;
+$app['debug'] = true;
+
+$app->register(new \Silex\Provider\TwigServiceProvider(), [
+    'twig.path' => '.'
+]);
+
+$app->get('/', function() use ($app) {
+    return $app['twig']->render('index.twig',[
+        'name' => 'やまだたろう'
+    ]);
+});
+
+$app->run();
+
+```
+
 ## 環境
 macOS Sierra 10.12.6
 
