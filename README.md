@@ -27,7 +27,10 @@ Study-Silex
 ├── composer.json
 ├── composer.lock
 ├── index.php
-└── vendor
+├── vendor
+└── views
+    ├── index.twig
+    └── layout.twig
 ```
 
 ### Hello World
