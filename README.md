@@ -19,6 +19,24 @@ Hello Worldからログイン機能、セッション管理まで。
 $ composer install
 ```
 
+### Hello World
+`index.php` を作成する。
+
+```php
+<?php
+require_once __DIR__.'/../vendor/autoload.php';
+
+$app = new Silex\Application;
+
+// Routingなど
+$app->get('/', function() use ($app) {
+  return 'Hello, World!!';
+});
+
+// Silexアプリケーションの実行
+$app->run();
+?>
+```
 
 ## 環境
 macOS Sierra 10.12.6
