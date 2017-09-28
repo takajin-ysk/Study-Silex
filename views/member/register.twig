@@ -1,0 +1,22 @@
+{# /views/member/register.twig #}
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <title>会員登録</title>
+</head>
+<body>
+<form action="{{ app.request.baseUrl }}/member/register" method="post" class="well">
+    <div>
+        メールドレス
+        <input type="text" name="member[email]" value="" />
+    </div>
+    <div>
+        パスワード
+        <input type="password" name="member[password]" value="" />
+    </div>
+    <button type="submit" class="btn">登録</button>
+</form>
+</body>
+</html>
