@@ -290,6 +290,40 @@ mysql> select * from member;
 1 row in set (0.00 sec)
 ```
 
+## テスト＆リファクタリング
+`index.php`にロジックが集中してしまいメンテナンスしづらくなるので、
+テストを書いた上でMVCモデルにリファクタリングする。
+
+### 準備
+`composer.json`を下記のように編集する。
+
+```json
+{
+  "repositories": [
+    {
+      "type": "pear",
+      "url": "http://pear.symfony-project.com"
+    },
+    {
+      "type": "pear",
+      "url": "http://pear.phpunit.de"
+    }
+  ],
+  "require": {
+    "silex/silex": "~1.2|~2.0",
+    "twig/twig": "~1.34|~2.4",
+    "doctrine/dbal": "~2.5",
+    "doctrine/common": "~2.7",
+    "phpunit/phpunit": "*",
+    "symfony/browser-kit": "~3.3",
+    "symfony/dom-crawler": "~3.3",
+    "symfony/css-selector": "~3.3"
+  }
+}
+```
+
+
+
 ## 参考
 [Silex本家のDocumentation](https://silex.symfony.com/doc/2.0/)
 
