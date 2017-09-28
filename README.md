@@ -314,15 +314,132 @@ mysql> select * from member;
     "twig/twig": "~1.34|~2.4",
     "doctrine/dbal": "~2.5",
     "doctrine/common": "~2.7",
-    "phpunit/phpunit": "*",
+    "phpunit/phpunit": "5.7",
     "symfony/browser-kit": "~3.3",
     "symfony/dom-crawler": "~3.3",
     "symfony/css-selector": "~3.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "StudySilex\\": "src/"
+    }
   }
 }
 ```
 
+PHPUnitの実行ファイルと設定ファイルを作成する。
 
+```php
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__.'/vendor/autoload.php';
+
+$paths = get_include_path();
+
+foreach (glob(__DIR__.'/vendor/phpunit/*') as $path) {
+    $paths .= PATH_SEPARATOR . $path;
+}
+
+set_include_path($paths);
+
+#require_once 'PHPUnit/Autoload.php';
+
+PHPUnit_TextUI_Command::main();
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<phpunit backupGlobals="false"
+         backupStaticAttributes="false"
+         colors="false"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         processIsolation="false"
+         stopOnFailure="false"
+         syntaxCheck="false"
+>
+    <testsuites>
+        <testsuite name="Study-Silex Test Suite">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+
+</phpunit>
+```
+
+テストを書く。
+
+```php
+<?php
+
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Silex\Provider\DoctrineServiceProvider;
+use Silex\WebTestCase;
+
+class MemberRegistrationTest extends WebTestCase
+{
+
+    private $db;
+    private $member;
+
+    public function __construct()
+    {
+        $app = new Silex\Application();
+        $app->register(new DoctrineServiceProvider(), [
+            'db.options' => [
+                'driver' => 'pdo_mysql',
+                'dbname' => 'silex',
+                'host' => '127.0.0.1',
+                'user' => 'root',
+                'password' => null
+            ],
+        ]);
+
+        $this->db = $app['db'];
+        $this->db->exec("TRUNCATE TABLE member");
+    }
+
+    public function createApplication()
+    {
+        require __DIR__ . '/../index.php';
+        $app['debug'] = true;
+        unset($app['exception_handler']);
+
+        return $app;
+    }
+
+    /**
+     * @test
+     */
+    public function memberRegistration()
+    {
+        $client = $this->createClient();
+        $crawler = $client->request('GET', '/member/register');
+        $this->assertTrue($client->getResponse()->isSuccessful());
+        $this->assertSame(1, $crawler->filter('title:contains("会員登録")')->count());
+
+        $form = $crawler->filter('#register_submit')->form();
+        $data = [
+            'member[email]' => 'test@test.com',
+            'member[password]' => 'testpassword',
+        ];
+        $crawler = $client->submit($form, $data);
+        $this->assertTrue($client->getResponse()->isSuccessful());
+        $this->assertSame(1, $crawler->filter('title:contains("会員登録完了")')->count());
+    }
+}
+```
+
+なぜか / のルーティングがないとエラーになるので`index.php`下記を追記する。
+```php
+$app->get('/', function () use ($app) {
+    return "";
+});
+```
 
 ## 参考
 [Silex本家のDocumentation](https://silex.symfony.com/doc/2.0/)
