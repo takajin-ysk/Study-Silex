@@ -21,8 +21,8 @@
     "phpunit/phpunit": "*"
   },
   "autoload": {
-    "psr-0": {
-      "StudySilex": "source/"
+    "psr-4": {
+      "StudySilex\\": "source/"
     }
   }
 }

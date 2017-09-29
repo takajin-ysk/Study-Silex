@@ -6,8 +6,6 @@ use Pimple\Container;
 use Pimple\ServiceProviderInterface;
 use StudySilex\Service\Member;
 
-require_once __DIR__ . '/../../source/Service/Member.php';
-
 class MemberServiceProvider implements ServiceProviderInterface
 {
     /**
