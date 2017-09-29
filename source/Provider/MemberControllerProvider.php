@@ -21,13 +21,6 @@ class MemberControllerProvider implements ControllerProviderInterface
             $member = $request->get('member');
 
             $app['member']->register($member);
-//            $sql = "INSERT INTO member SET email = :email, password = :password, created_at = now(), updated_at = now()";
-//            $statement = $app['db']->prepare($sql);
-//            $statement->bindParam(':email', $member['email']);
-//            $password = md5($member['password']);
-//            $statement->bindParam(':password', $password);
-//
-//            $statement->execute();
 
             return $app['twig']->render('member/finish.twig', [
                 'member' => $member
