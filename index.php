@@ -47,4 +47,7 @@ $app->post('member/register', function (Request $request) use ($app) {
     ]);
 });
 
+$app->get('/', function() use ($app) {
+    return "test";
+});
 $app->run();
