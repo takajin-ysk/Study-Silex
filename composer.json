@@ -19,5 +19,10 @@
   },
   "require-dev": {
     "phpunit/phpunit": "*"
+  },
+  "autoload": {
+    "psr-0": {
+      "StudySilex": "source/"
+    }
   }
 }
