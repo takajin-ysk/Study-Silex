@@ -32,10 +32,6 @@ $app->register(new DoctrineServiceProvider(), [
 $app->register(new MemberServiceProvider());
 $app->mount('/member', new MemberControllerProvider());
 
-$app->get('/', function() use ($app) {
-    return "test";
-});
-
 $app->get('/', function () use ($app) {
     return "";
 });

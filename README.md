@@ -314,82 +314,37 @@ mysql> select * from member;
     "twig/twig": "~1.34|~2.4",
     "doctrine/dbal": "~2.5",
     "doctrine/common": "~2.7",
-    "phpunit/phpunit": "5.7",
     "symfony/browser-kit": "~3.3",
-    "symfony/dom-crawler": "~3.3",
     "symfony/css-selector": "~3.3"
   },
+  "require-dev": {
+    "phpunit/phpunit": "*"
+  },
   "autoload": {
-    "psr-4": {
-      "StudySilex\\": "src/"
+    "psr-0": {
+      "StudySilex": "source/"
     }
   }
 }
 ```
 
-PHPUnitの実行ファイルと設定ファイルを作成する。
-
-```php
-#!/usr/bin/env php
-<?php
-
-require_once __DIR__.'/vendor/autoload.php';
-
-$paths = get_include_path();
-
-foreach (glob(__DIR__.'/vendor/phpunit/*') as $path) {
-    $paths .= PATH_SEPARATOR . $path;
-}
-
-set_include_path($paths);
-
-#require_once 'PHPUnit/Autoload.php';
-
-PHPUnit_TextUI_Command::main();
-```
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-
-<phpunit backupGlobals="false"
-         backupStaticAttributes="false"
-         colors="false"
-         convertErrorsToExceptions="true"
-         convertNoticesToExceptions="true"
-         convertWarningsToExceptions="true"
-         processIsolation="false"
-         stopOnFailure="false"
-         syntaxCheck="false"
->
-    <testsuites>
-        <testsuite name="Study-Silex Test Suite">
-            <directory>./tests</directory>
-        </testsuite>
-    </testsuites>
-
-</phpunit>
-```
-
-テストを書く。
+### テストの作成
 
 ```php
 <?php
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Silex\Provider\DoctrineServiceProvider;
 use Silex\WebTestCase;
 
-class MemberRegistrationTest extends WebTestCase
+class MemberControllerTest extends WebTestCase
 {
-
     private $db;
-    private $member;
 
-    public function __construct()
+    public function construct()
     {
         $app = new Silex\Application();
-        $app->register(new DoctrineServiceProvider(), [
+        $app->register(new Silex\Provider\DoctrineServiceProvider(), [
             'db.options' => [
                 'driver' => 'pdo_mysql',
                 'dbname' => 'silex',
@@ -412,20 +367,17 @@ class MemberRegistrationTest extends WebTestCase
         return $app;
     }
 
-    /**
-     * @test
-     */
-    public function memberRegistration()
+    public function testMemberRegistration()
     {
         $client = $this->createClient();
-        $crawler = $client->request('GET', '/member/register');
+        $crawler = $client->request('GET', 'member/register');
         $this->assertTrue($client->getResponse()->isSuccessful());
         $this->assertSame(1, $crawler->filter('title:contains("会員登録")')->count());
 
         $form = $crawler->filter('#register_submit')->form();
         $data = [
-            'member[email]' => 'test@test.com',
-            'member[password]' => 'testpassword',
+            'member[email]' => 'sample@example.com',
+            'member[password]' => 'sample',
         ];
         $crawler = $client->submit($form, $data);
         $this->assertTrue($client->getResponse()->isSuccessful());
@@ -434,13 +386,332 @@ class MemberRegistrationTest extends WebTestCase
 }
 ```
 
-なぜか / のルーティングがないとエラーになるので`index.php`下記を追記する。
+なぜか / のルーティングがないとエラーになるので`index.php`に下記を追記する。
 ```php
 $app->get('/', function () use ($app) {
     return "";
 });
 ```
 
+テストを実行する。
+```bash
+$ ./vendor/bin/phpunit test
+PHPUnit 5.7.22 by Sebastian Bergmann and contributors.
+
+.                                                                   1 / 1 (100%)
+
+Time: 107 ms, Memory: 10.00MB
+
+OK (1 test, 4 assertions)
+```
+
+### リファクタリング
+#### コントローラ
+##### ControllerProviderの作成
+`MemberControllerProvider`を作成する。
+
+```php
+<?php
+
+namespace StudySilex\Provider;
+
+use Silex\Api\ControllerProviderInterface;
+use Silex\Application;
+use Symfony\Component\HttpFoundation\Request;
+
+class MemberControllerProvider implements ControllerProviderInterface
+{
+    public function connect(Application $app)
+    {
+        $controllers = $app['controllers_factory'];
+
+        $controllers->get('/register', function (Request $request) use ($app) {
+            $app['request'] = $request;
+            return $app['twig']->render('member/register.twig');
+        });
+
+        $controllers->post('/register', function (Request $request) use ($app) {
+            $member = $request->get('member');
+
+            $sql = "INSERT INTO member SET email = :email, password = :password, created_at = now(), updated_at = now()";
+            $statement = $app['db']->prepare($sql);
+            $statement->bindParam(':email', $member['email']);
+            $password = md5($member['password']);
+            $statement->bindParam(':password', $password);
+
+            $statement->execute();
+                      
+            return $app['twig']->render('member/finish.twig', [
+                'member' => $member
+            ]);
+
+        });
+        return $controllers;
+    }
+}
+```
+
+`index.php`を、`mount`メソッドを使用してコントローラを読み込むよう修正する。
+
+```php
+<?php
+
+use Silex\Provider\TwigServiceProvider;
+use StudySilex\Provider\MemberControllerProvider;
+use Silex\Provider\DoctrineServiceProvider;
+use StudySilex\Provider\MemberServiceProvider;
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+//TODO namespaceが効いたら下記は削除
+require_once __DIR__ . '/source/Provider/MemberControllerProvider.php';
+
+$app = new Silex\Application;
+$app['debug'] = true;
+
+$app->register(new TwigServiceProvider(), [
+    'twig.path' => __DIR__ . '/views',
+    'twig_options' => ['debug' => true]
+]);
+
+$app->register(new DoctrineServiceProvider(), [
+    'db.options' => [
+        'driver' => 'pdo_mysql',
+        'dbname' => 'silex',
+        'host' => '127.0.0.1',
+        'user' => 'root',
+        'password' => null
+    ]
+]);
+
+$app->post('member/register', function (Request $request) use ($app) {
+   $member = $request->get('member');
+
+   $sql = "INSERT INTO member SET email = :email, password = :password, created_at = now(), updated_at = now()";
+   $stmt = $app['db']->prepare($sql);
+
+   $stmt->bindParam(':email', $member['email']);
+   $password = md5($member['password']);
+   $stmt->bindParam(':password', $password);
+
+   $stmt->execute();
+
+   return $app['twig']->render('member/finish.twig', [
+       'member' => $member
+    ]);
+});
+
+$app->mount('/member', new MemberControllerProvider());
+
+$app->get('/', function () use ($app) {
+    return "";
+});
+
+$app->run();
+```
+
+#### モデル
+`index.php`にDB更新ロジックが書かれているので、これをモデルに移動させる。
+
+##### サービスモデルの作成
+ここで、ついでにパスワードのハッシュ化を行うメソッドも分離させる。
+
+```php
+<?php
+
+namespace StudySilex\Service;
+
+class Member
+{
+    protected $db;
+
+    public function __construct($db)
+    {
+        $this->db = $db;
+    }
+
+    public function register($data)
+    {
+        try{
+            $this->db->beginTransaction();
+            $id = $this->db->lastInsertId();
+            $sql = "INSERT INTO member SET email = :email, password = :password, created_at = now(), updated_at = now()";
+            $statement = $this->db->prepare($sql);
+            $statement->bindParam(':email', $data['email']);
+            $statement->bindParam(':password', $this->hashPassword($id, $data['password']));
+
+            $statement->execute();
+
+        }
+        catch (Exception $e)
+        {
+            $this->db->rollback();
+            throw $e;
+        }
+
+        $this->db->commit();
+    }
+
+    /**
+     * @param $id
+     * @return string
+     */
+    private function getSalt($id)
+    {
+        return md5($id);
+    }
+
+    /**
+     * @param $id
+     * @param $password
+     * @return string
+     */
+    private function hashPassword($id, $password)
+    {
+        $salt = $this->getSalt($id);
+        $hash = '';
+        for($i = 0; $i < 1024; $i++)
+        {
+            $hash = hash('sha256', $hash . $password . $salt);
+        }
+
+        return $hash;
+    }
+}
+```
+##### ServiceProviderの作成
+`MemberServiceProvider`を作成する。
+
+```php
+<?php
+
+namespace StudySilex\Provider;
+
+use Pimple\Container;
+use Pimple\ServiceProviderInterface;
+use StudySilex\Service\Member;
+
+require_once __DIR__ . '/../../source/Service/Member.php';
+
+class MemberServiceProvider implements ServiceProviderInterface
+{
+    /**
+     * Registers services on the given container.
+     *
+     * This method should only be used to configure services and parameters.
+     * It should not get services.
+     *
+     * @param Container $app
+     */
+    public function register(Container $app)
+    {
+        $app['member'] = function () use ($app) {
+            return new Member($app['db']);
+        };
+    }
+}
+```
+
+`index.php`に`MemberServiceProvider`を登録する。
+```php
+<?php
+
+use Silex\Provider\TwigServiceProvider;
+use StudySilex\Provider\MemberControllerProvider;
+use Silex\Provider\DoctrineServiceProvider;
+use StudySilex\Provider\MemberServiceProvider;
+
+require_once __DIR__ . '/vendor/autoload.php';
+
+//TODO namespaceが効いたら下記は削除
+require_once __DIR__ . '/source/Provider/MemberControllerProvider.php';
+require_once __DIR__ . '/source/Provider/MemberServiceProvider.php';
+
+$app = new Silex\Application;
+$app['debug'] = true;
+
+$app->register(new TwigServiceProvider(), [
+    'twig.path' => __DIR__ . '/views',
+    'twig_options' => ['debug' => true]
+]);
+
+$app->register(new DoctrineServiceProvider(), [
+    'db.options' => [
+        'driver' => 'pdo_mysql',
+        'dbname' => 'silex',
+        'host' => '127.0.0.1',
+        'user' => 'root',
+        'password' => null
+    ]
+]);
+
+$app->register(new MemberServiceProvider());
+$app->mount('/member', new MemberControllerProvider());
+
+$app->get('/', function () use ($app) {
+    return "";
+});
+
+$app->run();
+```
+
+`MemberControllerProvider.php`で`Member.php`の`register`メソッドを呼び出す。
+```php
+<?php
+
+namespace StudySilex\Provider;
+
+use Silex\Api\ControllerProviderInterface;
+use Silex\Application;
+use Symfony\Component\HttpFoundation\Request;
+
+class MemberControllerProvider implements ControllerProviderInterface
+{
+    public function connect(Application $app)
+    {
+        $controllers = $app['controllers_factory'];
+
+        $controllers->get('/register', function (Request $request) use ($app) {
+            $app['request'] = $request;
+            return $app['twig']->render('member/register.twig');
+        });
+
+        $controllers->post('/register', function (Request $request) use ($app) {
+            $member = $request->get('member');
+
+            $app['member']->register($member);
+
+            return $app['twig']->render('member/finish.twig', [
+                'member' => $member
+            ]);
+
+        });
+        return $controllers;
+    }
+}
+```
+
+最終的なディレクトリ構成は下記のようになった。
+```
+.
+├── README.md
+├── composer.json
+├── composer.lock
+├── index.php
+├── source
+│   ├── Provider
+│   │   ├── MemberControllerProvider.php
+│   │   └── MemberServiceProvider.php
+│   └── Service
+│       └── Member.php
+├── test
+│   └── MemberControllerTest.php
+├── vendor
+└── views
+    └── member
+        ├── finish.twig
+        └── register.twig
+```
 ## 参考
 [Silex本家のDocumentation](https://silex.symfony.com/doc/2.0/)
 
