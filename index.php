@@ -1,10 +1,15 @@
 <?php
 
 use Silex\Provider\TwigServiceProvider;
-use Symfony\Component\HttpFoundation\Request;
+use StudySilex\Provider\MemberControllerProvider;
 use Silex\Provider\DoctrineServiceProvider;
+use StudySilex\Provider\MemberServiceProvider;
 
 require_once __DIR__ . '/vendor/autoload.php';
+
+//TODO namespaceが効いたら下記は削除
+require_once __DIR__ . '/source/Provider/MemberControllerProvider.php';
+require_once __DIR__ . '/source/Provider/MemberServiceProvider.php';
 
 $app = new Silex\Application;
 $app['debug'] = true;
@@ -24,27 +29,11 @@ $app->register(new DoctrineServiceProvider(), [
     ]
 ]);
 
-$app->get('/member/register', function(Request $request) use ($app) {
-    $app['request'] = $request;
+$app->register(new MemberServiceProvider());
+$app->mount('/member', new MemberControllerProvider());
 
-    return $app['twig']->render('member/register.twig');
-});
-
-$app->post('member/register', function (Request $request) use ($app) {
-   $member = $request->get('member');
-
-   $sql = "INSERT INTO member SET email = :email, password = :password, created_at = now(), updated_at = now()";
-   $stmt = $app['db']->prepare($sql);
-
-   $stmt->bindParam(':email', $member['email']);
-   $password = md5($member['password']);
-   $stmt->bindParam(':password', $password);
-
-   $stmt->execute();
-
-   return $app['twig']->render('member/finish.twig', [
-       'member' => $member
-    ]);
+$app->get('/', function() use ($app) {
+    return "test";
 });
 
 $app->get('/', function () use ($app) {
