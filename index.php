@@ -1,22 +1,30 @@
 <?php
 
-use Silex\Provider\TwigServiceProvider;
-
 require_once __DIR__ . '/vendor/autoload.php';
 
 $app = new Silex\Application;
 $app['debug'] = true;
 
-$app->register(new TwigServiceProvider(), [
-    'twig.path' => 'views'
+$app->register(new Silex\Provider\TwigServiceProvider(), [
+    'twig.path' => __DIR__ . '/views',
+    'twig_options' => ['debug' => true]
 ]);
 
-// Routingなど
-$app->get('/', function() use ($app) {
-    return $app['twig']->render('index.twig',[
-        'name' => 'やまだたろう'
-    ]);
+$app->register(new Silex\Provider\DoctrineServiceProvider(), [
+    'db.options' => [
+        'driver' => 'pdo_mysql',
+        'dbname' => 'silex',
+        'host' => '127.0.0.1',
+        'user' => 'root',
+        'password' => null
+    ]
+]);
+
+$app->register(new StudySilex\Provider\MemberServiceProvider());
+$app->mount('/member', new StudySilex\Provider\MemberControllerProvider());
+
+$app->get('/', function () use ($app) {
+    return "";
 });
 
-// Silexアプリケーションの実行
 $app->run();
